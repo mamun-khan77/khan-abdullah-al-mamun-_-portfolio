@@ -28,6 +28,7 @@ export const Contact: React.FC = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const [copiedEmail, setCopiedEmail] = useState(false);
   const [copiedPhone, setCopiedPhone] = useState(false);
 
@@ -40,31 +41,32 @@ export const Contact: React.FC = () => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.email || !formData.message) return;
 
     setIsSubmitting(true);
+    setSubmitError('');
 
-    /**
-     * ============================================================
-     * BACKEND INTEGRATION NOTE:
-     * To connect Formspree, Resend, or EmailJS, replace the
-     * timeout simulation below with your actual API endpoint:
-     *
-     * Example (Formspree):
-     * await fetch('https://formspree.io/f/YOUR_FORM_ID', {
-     *   method: 'POST',
-     *   headers: { 'Content-Type': 'application/json' },
-     *   body: JSON.stringify(formData)
-     * });
-     * ============================================================
-     */
-    setTimeout(() => {
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        const result = await response.json().catch(() => null);
+        throw new Error(result?.error || 'Unable to send your message. Please try again.');
+      }
+
       setIsSubmitting(false);
       setSubmitted(true);
       setFormData({ name: '', email: '', subject: '', message: '' });
-    }, 900);
+    } catch (error) {
+      setIsSubmitting(false);
+      setSubmitError(error instanceof Error ? error.message : 'Unable to send your message. Please try again.');
+    }
   };
 
   const copyToClipboard = (text: string, type: 'email' | 'phone') => {
@@ -371,9 +373,15 @@ export const Contact: React.FC = () => {
                     </button>
 
                     <span className="text-[11px] font-mono text-neutral-500">
-                      ⚡ Ready to connect to Formspree / Resend API
+                      Messages are sent securely via Resend
                     </span>
                   </div>
+                  {submitError && (
+                    <p role="alert" className="flex items-center gap-2 text-xs text-red-400">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      {submitError}
+                    </p>
+                  )}
                 </form>
               )}
             </div>
